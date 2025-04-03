@@ -68,6 +68,9 @@ contract HemiTest is Test {
 
         vm.prank(owner);
         hemi.mintEmissions();
+
+        emissionAmount = hemi.calculateEmission();
+        assertEq(emissionAmount, 0, "Emission amount should be greater than zero");
     }
 
     function testRevertIfEmissionsAlreadyEnabled() public {

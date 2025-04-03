@@ -105,7 +105,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         if (lastEmission != 0) {
             revert EmissionsAlreadyEnabled();
         }
-        if (l2Tunnel == address(0) || l2Destination == address(0)) {
+        if (l2Tunnel == address(0)) {
             revert EmissionNotSetup();
         }
         lastEmission = block.timestamp;
@@ -117,7 +117,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
      * owner can update multiple times as long as emission not enabled
      * @param l2Tunnel_ The address of the L2 tunnel.
      * @param l2Destination_ The address of the L2 destination.
-     * @param remoteToken The address of the remote token.
+     * @param remoteToken_ The address of the remote token.
      */
     function setupEmissions(address l2Tunnel_, address l2Destination_, address remoteToken_) external onlyOwner {
         if (lastEmission != 0) {
