@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 interface IL2Tunnel {
-     function bridgeERC20To(
+    function bridgeERC20To(
         address _localToken,
         address _remoteToken,
         address _to,
@@ -28,7 +28,6 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     address public l2Tunnel;
     address public l2Destination;
     address public remoteToken;
-    
 
     // ####### Events #######
     event EmissionsEnabled(uint256 timestamp);
@@ -42,7 +41,11 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     error EmissionAmountZero();
     error MintagePeriodNotElapsed();
 
-    constructor(address _owner , address _initialMintReceiver) ERC20("hemi", "HEMI") ERC20Permit("HEMI") Ownable(_owner) {
+    constructor(address _owner, address _initialMintReceiver)
+        ERC20("hemi", "HEMI")
+        ERC20Permit("HEMI")
+        Ownable(_owner)
+    {
         // Mint initial supply to the owner
         _mint(_initialMintReceiver, 10e9 * 10 ** decimals()); // 10B tokens
     }
@@ -61,7 +64,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
 
     /**
      * @notice Mints emissions based on the calculated emission amount.
-    */
+     */
     function mintEmissions() external {
         uint256 _lastEmission = lastEmission;
         if (_lastEmission == 0) {
@@ -77,16 +80,11 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
             revert EmissionAmountZero();
         }
         lastEmission = block.timestamp;
-        
+
         _mint(address(this), _emissionAmount);
         _approve(address(this), l2Tunnel, _emissionAmount);
         IL2Tunnel(l2Tunnel).bridgeERC20To(
-            address(this),
-            remoteToken,
-            l2Destination,
-            _emissionAmount,
-            l2TunnelMinGasLimit,
-            ""
+            address(this), remoteToken, l2Destination, _emissionAmount, l2TunnelMinGasLimit, ""
         );
         _approve(address(this), l2Tunnel, 0);
 
@@ -94,11 +92,15 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         emit EmissionsMinted(_emissionAmount, block.timestamp);
     }
 
+    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
+    }
+
     // ####### Owner only functions #####
 
     /**
      * @notice Enables emissions by setting the `lastEmission` timestamp.
-    */
+     */
     function enableEmissions() external onlyOwner {
         if (lastEmission != 0) {
             revert EmissionsAlreadyEnabled();
@@ -115,7 +117,8 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
      * owner can update multiple times as long as emission not enabled
      * @param l2Tunnel_ The address of the L2 tunnel.
      * @param l2Destination_ The address of the L2 destination.
-    */
+     * @param remoteToken The address of the remote token.
+     */
     function setupEmissions(address l2Tunnel_, address l2Destination_, address remoteToken_) external onlyOwner {
         if (lastEmission != 0) {
             revert EmissionsAlreadyEnabled();
@@ -133,9 +136,5 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
 
     function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._update(from, to, amount);
-    }
-
-    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
-        return super.nonces(owner);
     }
 }
