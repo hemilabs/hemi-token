@@ -14,6 +14,7 @@ contract HemiTest is Test {
     function setUp() public {
         // Deploy the Hemi contract with the owner address
         hemi = new Hemi(owner, owner);
+        vm.createSelectFork(vm.envString("FORK_NODE_URL"));
     }
 
     function testSetupEmissions() public {

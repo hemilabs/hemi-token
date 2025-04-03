@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 interface IL2Tunnel {
      function bridgeERC20To(
@@ -15,7 +17,7 @@ interface IL2Tunnel {
     ) external;
 }
 
-contract Hemi is ERC20, Ownable {
+contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     uint256 public constant MINTAGE_PERIOD = 30 days;
     uint256 public constant ANNUAL_INFLATION_RATE = 700; // 7% annual inflation
     uint32 public constant l2TunnelMinGasLimit = 400000;
@@ -40,7 +42,7 @@ contract Hemi is ERC20, Ownable {
     error EmissionAmountZero();
     error MintagePeriodNotElapsed();
 
-    constructor(address _owner , address _initialMintReceiver) ERC20("hemi", "HEMI") Ownable(_owner) {
+    constructor(address _owner , address _initialMintReceiver) ERC20("hemi", "HEMI") ERC20Permit("HEMI") Ownable(_owner) {
         // Mint initial supply to the owner
         _mint(_initialMintReceiver, 10e9 * 10 ** decimals()); // 10B tokens
     }
@@ -86,6 +88,7 @@ contract Hemi is ERC20, Ownable {
             l2TunnelMinGasLimit,
             ""
         );
+        _approve(address(this), l2Tunnel, 0);
 
         // Emit event for minting emissions
         emit EmissionsMinted(_emissionAmount, block.timestamp);
@@ -126,5 +129,13 @@ contract Hemi is ERC20, Ownable {
         remoteToken = remoteToken_;
 
         emit EmissionsSetup(l2Tunnel_, l2Destination_, remoteToken_);
+    }
+
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
+        super._update(from, to, amount);
+    }
+
+    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
     }
 }
