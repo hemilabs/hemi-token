@@ -10,11 +10,13 @@ contract HemiTest is Test {
     address public l2Destination = address(0x789);
     address public l2Tunnel = address(0x5eaa10F99e7e6D177eF9F74E519E319aa49f191e);
     address public remoteToken = address(0x234);
+    uint256 internal constant YEAR = 365.25 days;
+    uint256 internal constant MAX_BPS = 10000;
 
     function setUp() public {
         // Deploy the Hemi contract with the owner address
         hemi = new Hemi(owner, owner);
-        vm.createSelectFork(vm.envString("FORK_NODE_URL"));
+        vm.createSelectFork(vm.envString("FORK_NODE_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
     }
 
     function testSetupEmissions() public {
@@ -43,10 +45,10 @@ contract HemiTest is Test {
         hemi.enableEmissions();
 
         // Fast forward time by 1 year
-        vm.warp(block.timestamp + 365 days);
+        vm.warp(block.timestamp + YEAR);
 
         uint256 emissionAmount = hemi.calculateEmission();
-        uint256 expectedEmission = (hemi.totalSupply() * hemi.ANNUAL_INFLATION_RATE() * 365 days) / (365 days * 10000);
+        uint256 expectedEmission = (hemi.totalSupply() * hemi.ANNUAL_INFLATION_RATE_BPS()) / MAX_BPS;
         assertEq(emissionAmount, expectedEmission, "Emission amount should be greater than zero");
     }
 
@@ -66,8 +68,18 @@ contract HemiTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Hemi.EmissionsMinted(emissionAmount, block.timestamp);
 
+        uint256 _totalSupplyBefore = hemi.totalSupply();
         vm.prank(owner);
         hemi.mintEmissions();
+        uint256 _totalSupplyAfter = hemi.totalSupply();
+        assertEq(
+            _totalSupplyAfter,
+            _totalSupplyBefore + emissionAmount,
+            "Total supply should increase by the emission amount"
+        );
+
+        uint256 _balanceOfTunnel = hemi.balanceOf(l2Tunnel);
+        assertEq(_balanceOfTunnel, emissionAmount, "Tunnel balance should be equal to the emission amount");
 
         emissionAmount = hemi.calculateEmission();
         assertEq(emissionAmount, 0, "Emission amount should be greater than zero");

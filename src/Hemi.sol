@@ -19,8 +19,10 @@ interface IL2Tunnel {
 
 contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     uint256 public constant MINTAGE_PERIOD = 30 days;
-    uint256 public constant ANNUAL_INFLATION_RATE = 700; // 7% annual inflation
-    uint32 public constant l2TunnelMinGasLimit = 400000;
+    uint256 public constant ANNUAL_INFLATION_RATE_BPS = 7_00; // 7% annual inflation
+    uint32 internal constant l2TunnelMinGasLimit = 400000;
+    uint256 internal constant MAX_BPS = 100_00;
+    uint256 internal constant YEAR = 365.25 days;
 
     uint256 public lastEmission;
 
@@ -43,7 +45,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
 
     constructor(address _owner, address _initialMintReceiver)
         ERC20("hemi", "HEMI")
-        ERC20Permit("HEMI")
+        ERC20Permit("hemi")
         Ownable(_owner)
     {
         // Mint initial supply to the owner
@@ -59,7 +61,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
             return 0;
         }
         uint256 _timeElapsed = block.timestamp - lastEmission;
-        _emissionAmount = (totalSupply() * ANNUAL_INFLATION_RATE * _timeElapsed) / (365 days * 10000);
+        _emissionAmount = (totalSupply() * ANNUAL_INFLATION_RATE_BPS * _timeElapsed) / (YEAR * MAX_BPS);
     }
 
     /**
@@ -82,11 +84,12 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         lastEmission = block.timestamp;
 
         _mint(address(this), _emissionAmount);
-        _approve(address(this), l2Tunnel, _emissionAmount);
-        IL2Tunnel(l2Tunnel).bridgeERC20To(
+        address _l2Tunnel = l2Tunnel;
+        _approve(address(this), _l2Tunnel, _emissionAmount);
+        IL2Tunnel(_l2Tunnel).bridgeERC20To(
             address(this), remoteToken, l2Destination, _emissionAmount, l2TunnelMinGasLimit, ""
         );
-        _approve(address(this), l2Tunnel, 0);
+        _approve(address(this), _l2Tunnel, 0);
 
         // Emit event for minting emissions
         emit EmissionsMinted(_emissionAmount, block.timestamp);
