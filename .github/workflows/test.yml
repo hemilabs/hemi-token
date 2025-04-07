@@ -1,9 +1,6 @@
-name: CI
+name: foundry
 
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
+on: pull_request
 
 env:
   FOUNDRY_PROFILE: ci
@@ -13,27 +10,22 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - run: cat "${GITHUB_WORKSPACE}/.github/env.properties" >> $GITHUB_ENV
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Show Forge version
-        run: |
-          forge --version
-
-      - name: Run Forge fmt
-        run: |
-          forge fmt --check
-        id: fmt
+        with:
+          version: nightly
 
       - name: Run Forge build
         run: |
+          forge --version
           forge build --sizes
         id: build
 
@@ -41,3 +33,5 @@ jobs:
         run: |
           forge test -vvv
         id: test
+        env:
+          FORK_NODE_URL: ${{ secrets.FORK_NODE_URL }}
