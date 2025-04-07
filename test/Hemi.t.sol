@@ -15,7 +15,7 @@ contract HemiTest is Test {
 
     function setUp() public {
         // Deploy the Hemi contract with the owner address
-        hemi = new Hemi(owner, owner);
+        hemi = new Hemi(owner, owner, 700);
         vm.createSelectFork(vm.envString("FORK_NODE_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
     }
 
@@ -48,7 +48,7 @@ contract HemiTest is Test {
         vm.warp(block.timestamp + YEAR);
 
         uint256 emissionAmount = hemi.calculateEmission();
-        uint256 expectedEmission = (hemi.totalSupply() * hemi.ANNUAL_INFLATION_RATE_BPS()) / MAX_BPS;
+        uint256 expectedEmission = (hemi.totalSupply() * hemi.annualInflationRate()) / MAX_BPS;
         assertEq(emissionAmount, expectedEmission, "Emission amount should be greater than zero");
     }
 
@@ -126,5 +126,27 @@ contract HemiTest is Test {
         vm.expectRevert(Hemi.NullAddress.selector);
         vm.prank(owner);
         hemi.setupEmissions(l2Tunnel, address(0), remoteToken);
+    }
+
+    function testRevertIfInvalidAnnualInflationRate() public {
+        uint256 _currentInflationRate = hemi.annualInflationRate();
+        vm.expectRevert(Hemi.InvalidInflationRate.selector);
+        vm.prank(owner);
+        hemi.updateInflationRate(_currentInflationRate + 1);
+    }
+
+    function testDisableAllowInflationCut() public {
+        vm.prank(owner);
+        hemi.disableInflationCut();
+        vm.expectRevert(Hemi.InflationCutNotAllowed.selector);
+        vm.prank(owner);
+        hemi.updateInflationRate(10);
+    }
+
+    function testInflationRateReduced() public {
+        vm.prank(owner);
+        hemi.updateInflationRate(10);
+        uint256 _currentInflationRate = hemi.annualInflationRate();
+        assertEq(_currentInflationRate, 10);
     }
 }

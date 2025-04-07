@@ -19,12 +19,13 @@ interface IL2Tunnel {
 
 contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     uint256 public constant MINTAGE_PERIOD = 30 days;
-    uint256 public constant ANNUAL_INFLATION_RATE_BPS = 7_00; // 7% annual inflation
     uint32 internal constant l2TunnelMinGasLimit = 400000;
     uint256 internal constant MAX_BPS = 100_00;
     uint256 internal constant YEAR = 365.25 days;
 
     uint256 public lastEmission;
+    uint256 public annualInflationRate;
+    bool public allowInflationCut = true;
 
     // ### Tunnel config
     address public l2Tunnel;
@@ -35,6 +36,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     event EmissionsEnabled(uint256 timestamp);
     event EmissionsSetup(address indexed l2Tunnel, address indexed l2Destination, address indexed remoteToken);
     event EmissionsMinted(uint256 emissionAmount, uint256 timestamp);
+    event InflationRateReduced(uint256 oldInflationRate, uint256 newAnnualInflationRate);
 
     error EmissionsAlreadyEnabled();
     error EmissionsNotEnabled();
@@ -42,12 +44,15 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     error NullAddress();
     error EmissionAmountZero();
     error MintagePeriodNotElapsed();
+    error InflationCutNotAllowed();
+    error InvalidInflationRate();
 
-    constructor(address _owner, address _initialMintReceiver)
+    constructor(address _owner, address _initialMintReceiver, uint256 _annualInflationRate)
         ERC20("hemi", "HEMI")
         ERC20Permit("hemi")
         Ownable(_owner)
     {
+        annualInflationRate = _annualInflationRate;
         // Mint initial supply to the owner
         _mint(_initialMintReceiver, 10e9 * 10 ** decimals()); // 10B tokens
     }
@@ -61,7 +66,7 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
             return 0;
         }
         uint256 _timeElapsed = block.timestamp - lastEmission;
-        _emissionAmount = (totalSupply() * ANNUAL_INFLATION_RATE_BPS * _timeElapsed) / (YEAR * MAX_BPS);
+        _emissionAmount = (totalSupply() * annualInflationRate * _timeElapsed) / (YEAR * MAX_BPS);
     }
 
     /**
@@ -113,6 +118,27 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         }
         lastEmission = block.timestamp;
         emit EmissionsEnabled(block.timestamp);
+    }
+
+    function updateInflationRate(uint256 newInflationRate_) external onlyOwner {
+        if (!allowInflationCut) {
+            revert InflationCutNotAllowed();
+        }
+
+        uint256 _currentInflationRate = annualInflationRate;
+        if (newInflationRate_ >= _currentInflationRate) {
+            revert InvalidInflationRate();
+        }
+
+        emit InflationRateReduced(_currentInflationRate, newInflationRate_);
+        annualInflationRate = newInflationRate_;
+    }
+
+    /**
+     * @notice Permanently disables the ability to cut inflation rate.
+     */
+    function disableInflationCut() external onlyOwner {
+        allowInflationCut = false;
     }
 
     /**
