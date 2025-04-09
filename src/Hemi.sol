@@ -86,22 +86,24 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         if (_emissionAmount == 0) {
             revert EmissionAmountZero();
         }
+        _mintEmission(_emissionAmount);
         lastEmission = block.timestamp;
-
-        _mint(address(this), _emissionAmount);
-        address _l2Tunnel = l2Tunnel;
-        _approve(address(this), _l2Tunnel, _emissionAmount);
-        IL2Tunnel(_l2Tunnel).bridgeERC20To(
-            address(this), remoteToken, l2Destination, _emissionAmount, l2TunnelMinGasLimit, ""
-        );
-        _approve(address(this), _l2Tunnel, 0);
-
-        // Emit event for minting emissions
-        emit EmissionsMinted(_emissionAmount, block.timestamp);
     }
 
     function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
+    }
+
+    function _mintEmission(uint256 emissionAmount_) internal {
+        _mint(address(this), emissionAmount_);
+        address _l2Tunnel = l2Tunnel;
+        _approve(address(this), _l2Tunnel, emissionAmount_);
+        IL2Tunnel(_l2Tunnel).bridgeERC20To(
+            address(this), remoteToken, l2Destination, emissionAmount_, l2TunnelMinGasLimit, ""
+        );
+        _approve(address(this), _l2Tunnel, 0);
+
+        emit EmissionsMinted(emissionAmount_, block.timestamp);
     }
 
     // ####### Owner only functions #####
@@ -109,12 +111,15 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
     /**
      * @notice Enables emissions by setting the `lastEmission` timestamp.
      */
-    function enableEmissions() external onlyOwner {
+    function enableEmissions(uint256 firstEmissionAmount_) external onlyOwner {
         if (lastEmission != 0) {
             revert EmissionsAlreadyEnabled();
         }
         if (l2Tunnel == address(0)) {
             revert EmissionNotSetup();
+        }
+        if (firstEmissionAmount_ != 0) {
+            _mintEmission(firstEmissionAmount_);
         }
         lastEmission = block.timestamp;
         emit EmissionsEnabled(block.timestamp);
