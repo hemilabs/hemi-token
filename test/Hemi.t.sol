@@ -32,9 +32,20 @@ contract HemiTest is Test {
         hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
 
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
 
         assertGt(hemi.lastEmission(), 0, "Emissions not enabled");
+    }
+
+    function testFirstEmissionAmount() public {
+        vm.prank(owner);
+        hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
+        uint256 _firstEmission = 1000e18;
+        vm.prank(owner);
+        hemi.enableEmissions(_firstEmission);
+        uint256 _balanceOfTunnel = hemi.balanceOf(l2Tunnel);
+
+        assertEq(_balanceOfTunnel, _firstEmission, "Emissions not enabled");
     }
 
     function testCalculateEmission() public {
@@ -42,7 +53,7 @@ contract HemiTest is Test {
         hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
 
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
 
         // Fast forward time by 1 year
         vm.warp(block.timestamp + YEAR);
@@ -57,7 +68,7 @@ contract HemiTest is Test {
         hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
 
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
 
         // Fast forward time by 1 year
         vm.warp(block.timestamp + 365 days);
@@ -90,17 +101,17 @@ contract HemiTest is Test {
         hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
 
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
 
         vm.expectRevert(Hemi.EmissionsAlreadyEnabled.selector);
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
     }
 
     function testRevertIfEmissionNotSetup() public {
         vm.expectRevert(Hemi.EmissionNotSetup.selector);
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
     }
 
     function testRevertIfMintagePeriodNotElapsed() public {
@@ -108,7 +119,7 @@ contract HemiTest is Test {
         hemi.setupEmissions(l2Tunnel, l2Destination, remoteToken);
 
         vm.prank(owner);
-        hemi.enableEmissions();
+        hemi.enableEmissions(0);
 
         // Fast forward time by less than 30 days
         vm.warp(block.timestamp + 15 days);
