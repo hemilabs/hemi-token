@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity 0.8.29;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {ERC20Permit, Nonces} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 interface IL2Tunnel {
     function bridgeERC20To(
@@ -17,7 +17,7 @@ interface IL2Tunnel {
     ) external;
 }
 
-contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
+contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable2Step {
     uint256 public constant MINTAGE_PERIOD = 30 days;
     uint32 internal constant l2TunnelMinGasLimit = 400000;
     uint256 internal constant MAX_BPS = 100_00;
@@ -52,6 +52,12 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable {
         ERC20Permit("hemi")
         Ownable(_owner)
     {
+        if (_owner == address(0) || _initialMintReceiver == address(0)) {
+            revert NullAddress();
+        }
+        if (_annualInflationRate == 0 || _annualInflationRate > MAX_BPS) {
+            revert InvalidInflationRate();
+        }
         annualInflationRate = _annualInflationRate;
         // Mint initial supply to the owner
         _mint(_initialMintReceiver, 10e9 * 10 ** decimals()); // 10B tokens
