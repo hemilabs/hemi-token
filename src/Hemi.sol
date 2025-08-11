@@ -48,8 +48,8 @@ contract Hemi is ERC20, ERC20Permit, ERC20Votes, Ownable2Step {
     error InvalidInflationRate();
 
     constructor(address _owner, address _initialMintReceiver, uint256 _annualInflationRate)
-        ERC20("hemi", "HEMI")
-        ERC20Permit("hemi")
+        ERC20("Hemi", "HEMI")
+        ERC20Permit("Hemi")
         Ownable(_owner)
     {
         if (_owner == address(0) || _initialMintReceiver == address(0)) {
